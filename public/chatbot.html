@@ -3,30 +3,195 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stack Capital Chatbot</title>
+  <title>Stack Capital AI Chatbot</title>
+  <link rel="stylesheet" href="/styles.css">
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(180deg, #ffffff 0%, #f0fff0 40%);
+      margin: 0;
+      padding: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
       min-height: 100vh;
-      margin: 0;
-      background: #f7f9fc;
     }
-    h1 {
+    .chat-container {
+      max-width: 800px;
+      margin: 0 auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .chat-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .chat-header h1 {
       color: #333;
+      font-size: 2rem;
     }
-    iframe {
-      border: none;
+    .chat-window {
+      flex: 1;
+      border: 1px solid #ddd;
       border-radius: 10px;
+      padding: 20px;
+      background: white;
+      overflow-y: auto;
+      max-height: 60vh;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin-bottom: 15px;
+      padding: 10px 15px;
+      border-radius: 10px;
+      max-width: 75%;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+    .message.user {
+      background: #32cd32;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 2px;
+    }
+    .message.bot {
+      background: #f1f1f1;
+      color: #333;
+      align-self: flex-start;
+      border-bottom-left-radius: 2px;
+    }
+    .input-area {
+      display: flex;
+      margin-top: 20px;
+      gap: 10px;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 25px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .input-area button {
+      padding: 12px 25px;
+      background: #32cd32;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .input-area button:active {
+      transform: scale(0.95);
+    }
+    .input-area button:hover {
+      background: #28a428;
+    }
+    .input-area button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .back-link {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      text-decoration: none;
+      color: #333;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
-  <h1>Stack Capital AI Chatbot</h1>
-  <script src="https://cdn.jotfor.ms/agent/embedjs/019a31c3f0387bae85d2dee1223ec65bda99/embed.js"></script>
+  <a href="/" class="back-link">← Back to Home</a>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>Stack Solver AI</h1>
+      <p>Your intelligent investment companion.</p>
+    </div>
+    <div class="chat-window" id="chat-window">
+      <div class="message bot">Hello! I am Stack Solver AI. How can I assist with your investment questions today?</div>
+    </div>
+    <div class="input-area">
+      <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off"/>
+      <button id="send-button">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const chatWindow = document.getElementById('chat-window');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+
+    function addMessage(role, content) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${role}`;
+      messageDiv.textContent = content;
+      chatWindow.appendChild(messageDiv);
+      
+      // Auto-scroll to bottom
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      // 1. Show user message
+      addMessage('user', message);
+      messageInput.value = '';
+      sendButton.disabled = true;
+
+      // 2. Add a temporary "Thinking..." message
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'message bot';
+      loadingDiv.id = 'loading-bubble';
+      loadingDiv.textContent = '...';
+      chatWindow.appendChild(loadingDiv);
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+
+        // 3. Remove loading bubble
+        const loader = document.getElementById('loading-bubble');
+        if (loader) loader.remove();
+
+        if (!response.ok) throw new Error('Network error');
+
+        const data = await response.json();
+        
+        // 4. Use 'reply' because that's what server.js sends!
+        if (data.reply) {
+          addMessage('bot', data.reply);
+        } else {
+          addMessage('bot', "I'm sorry, I couldn't process that.");
+        }
+
+      } catch (error) {
+        console.error('Error:', error);
+        const loader = document.getElementById('loading-bubble');
+        if (loader) loader.remove();
+        addMessage('bot', 'Connection lost. Please check if your server is running.');
+      } finally {
+        sendButton.disabled = false;
+        messageInput.focus();
+      }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
 </body>
 </html>

@@ -19,6 +19,7 @@
   "homepage": "https://github.com/Pranvos/Asset-Investment-Website#readme",
   "description": "",
   "dependencies": {
+    "dotenv": "^17.2.3",
     "express": "^5.1.0"
   }
 }
